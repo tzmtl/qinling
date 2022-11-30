@@ -42,8 +42,7 @@ class KubernetesManager(base.OrchestratorBase):
 
         clients = k8s_util.get_k8s_clients(self.conf)
         self.v1 = clients['v1']
-        self.v1extension = clients['v1extension']
-        # self.apps_v1 = clients['apps_v1']
+        self.apps_v1 = clients['apps_v1']
 
         # Create namespace if not exists
         self._ensure_namespace()
@@ -93,7 +92,7 @@ class KubernetesManager(base.OrchestratorBase):
         retry=tenacity.retry_if_exception_type(exc.OrchestratorException)
     )
     def _wait_deployment_available(self, name):
-        ret = self.v1extension.read_namespaced_deployment(
+        ret = self.apps_v1.read_namespaced_deployment(
             name,
             self.conf.kubernetes.namespace
         )
@@ -107,7 +106,7 @@ class KubernetesManager(base.OrchestratorBase):
         available = 0
 
         try:
-            ret = self.v1extension.read_namespaced_deployment(
+            ret = self.apps_v1.read_namespaced_deployment(
                 name,
                 namespace=self.conf.kubernetes.namespace
             )
@@ -146,7 +145,7 @@ class KubernetesManager(base.OrchestratorBase):
             "Creating deployment for runtime %s: \n%s", name, deployment_body
         )
 
-        self.v1extension.create_namespaced_deployment(
+        self.apps_v1.create_namespaced_deployment(
             body=yaml.safe_load(deployment_body),
             namespace=self.conf.kubernetes.namespace,
             async_req=False
@@ -163,7 +162,7 @@ class KubernetesManager(base.OrchestratorBase):
         labels = {'runtime_id': name}
         selector = common.convert_dict_to_string(labels)
 
-        self.v1extension.delete_collection_namespaced_replica_set(
+        self.apps_v1.delete_collection_namespaced_replica_set(
             self.conf.kubernetes.namespace,
             label_selector=selector
         )
@@ -180,7 +179,7 @@ class KubernetesManager(base.OrchestratorBase):
             )
         LOG.info("Services in deployment %s deleted.", name)
 
-        self.v1extension.delete_collection_namespaced_deployment(
+        self.apps_v1.delete_collection_namespaced_deployment(
             self.conf.kubernetes.namespace,
             label_selector=selector,
             field_selector='metadata.name=%s' % name
@@ -201,7 +200,7 @@ class KubernetesManager(base.OrchestratorBase):
         retry=tenacity.retry_if_exception_type(exc.OrchestratorException)
     )
     def _wait_for_upgrade(self, deploy_name):
-        ret = self.v1extension.read_namespaced_deployment(
+        ret = self.apps_v1.read_namespaced_deployment(
             deploy_name,
             self.conf.kubernetes.namespace
         )
@@ -230,7 +229,7 @@ class KubernetesManager(base.OrchestratorBase):
                 }
             }
         }
-        self.v1extension.patch_namespaced_deployment(
+        self.apps_v1.patch_namespaced_deployment(
             name, self.conf.kubernetes.namespace, body
         )
 
@@ -243,7 +242,7 @@ class KubernetesManager(base.OrchestratorBase):
 
             body = {"rollbackTo": {"revision": 0}}
             try:
-                self.v1extension.create_namespaced_deployment_rollback(
+                self.apps_v1.create_namespaced_deployment_rollback(
                     name, self.conf.kubernetes.namespace, body
                 )
             except Exception:
